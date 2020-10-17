@@ -270,16 +270,20 @@ def sing_smbds_doc():
         curr_to_sign.remove(file_id)
         users.update_one({'login': signer_login}, {'$set': {'to_sign': curr_to_sign}})
 
+        signer_signature = db_users[signer_login]['chain'][-1]['signature']
+        signer_login = signer_login
+        signer_data = db_users[signer_login]['chain'][-1]['user_data']
+
         new_block_user = UserBlockchain.new_block(chain=chain,
                                                   my_docs=my_docs,
                                                   to_sign=to_sign,
                                                   doc_ver=doc_ver,
                                                   doc_id=file_id,
-                                                  signer_signature=db_users[signer_login]['chain'][-1]['signature'],
+                                                  signer_signature=signer_signature,
                                                   signer_login=signer_login,
-                                                  signer_data=db_users[signer_login]['chain'][-1]['user_data']
+                                                  signer_data=signer_data
                                                   )
-        db_users[owner_login]['chain'].append(new_block_user)
+        # db_users[owner_login]['chain'].append(new_block_user)
         prev_chain = db_users[owner_login]['chain']
         prev_chain.append(new_block_user)
         users.update_one({'login': owner_login}, {'$set': {'chain': prev_chain}})
@@ -298,7 +302,7 @@ def sing_smbds_doc():
                                                   document=db_files[file_id]['chain'][-1]['document']
                                                   )
 
-        db_files[file_id]['chain'].append(new_block_file)
+        # db_files[file_id]['chain'].append(new_block_file)
         prev_chain = db_files[file_id]['chain']
         prev_chain.append(new_block_file)
         files.update_one({'id': file_id}, {'$set': {'chain': prev_chain}})
