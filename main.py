@@ -17,6 +17,20 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
 node_identifier = str(uuid4()).replace('-', '')
 
+client = MongoClient('mongodb', 27017)
+users = client.users
+chains = client.chains
+"""
+добавление
+users.insert_one({"name":"bob", "secondname":"smith"})
+
+удаление
+users.delete_one({"name":"bob"})
+
+изменение
+users.find_one_and_update({"name": "bob"}, {"$set": {"name":"Tom"}})
+"""
+
 
 def get_hash(s):
     return hashlib.sha256(s.encode()).hexdigest()
