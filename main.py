@@ -201,9 +201,11 @@ def sign_file_own():
     doc_name = db_files[id_to_sign]['chain'][-1]['name']
     owner_signature = db_users[login]['chain'][-1]['signature']
 
+
     new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
                                               owner_signature=owner_signature, owner_login=login,
-                                              owner_signature_ts=db_users[login]['chain'][-1]['timestamp'])
+                                              owner_signature_ts=db_users[login]['chain'][-1]['timestamp'],
+                                              document=db_files[id_to_sign]['chain'][-1]['document'])
     prev_chain = db_files[id_to_sign]['chain']
     prev_chain.append(new_block_file)
     files.update_one({'id': id_to_sign}, {'$set': {'chain': prev_chain}})
@@ -292,7 +294,8 @@ def sing_smbds_doc():
                                                   signer_signature=db_users[signer_login]['chain'][-1]['signature'],
                                                   owner_signature_ts=db_users[signer_login]['chain'][-1][
                                                       'timestamp'],
-                                                  signer_signature_ts=db_users[owner_login]['chain'][-1]['timestamp']
+                                                  signer_signature_ts=db_users[owner_login]['chain'][-1]['timestamp'],
+                                                  document=db_files[file_id]['chain'][-1]['document']
                                                   )
 
         db_files[file_id]['chain'].append(new_block_file)
@@ -312,5 +315,4 @@ def test():
 if __name__ == '__main__':
     # users.delete_many({})
     # files.delete_many({})
-
     app.run(host='127.0.0.1', port=5000)
