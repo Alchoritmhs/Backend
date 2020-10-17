@@ -1,5 +1,4 @@
 from Chains import UserBlockchain, FileBlockchain
-from helpers import inin_pkl, readFile, rewriteFile
 from uuid import uuid4
 import time
 import hashlib
@@ -10,17 +9,10 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
 node_identifier = str(uuid4()).replace('-', '')
 
-client = MongoClient('mongodb', 27017)
-users = client.users
-chains = client.chains
-"""
-добавление
-users.insert_one({"name":"bob", "secondname":"smith"})
-удаление
-users.delete_one({"name":"bob"})
-изменение
-users.find_one_and_update({"name": "bob"}, {"$set": {"name":"Tom"}})
-"""
+client = MongoClient('localhost', 27017)
+mydatabase = client.blockchains
+users = mydatabase.users
+files = mydatabase.files
 
 
 def get_hash(s):
@@ -41,9 +33,8 @@ def register():
     signature = get_hash(f"{values['signature']}{time.time()}")
     user_data = eval(values['user_data'])
     blockchain = UserBlockchain(user_data=user_data, signature=signature, login=login, password=password)
-    db = readFile('data/db.pkl')
-    db['users'].update({login: blockchain.__dict__})
-    rewriteFile('data/db.pkl', db)
+    users.insert_one(
+        {'chain': blockchain.chain, 'login': login, 'to_sign': blockchain.to_sign, 'my_docs': blockchain.my_docs})
     response = {'status': 'OK', 'message': 'User registered', }
     return jsonify(response), 200
 
@@ -59,14 +50,21 @@ def login():
     values = request.values
     login = values['login']
     password = get_hash(values['password'])
-    db = readFile('data/db.pkl')
-    if login in db['users']:
-        password_db = db['users'][login]['chain'][-1]['password']
+    db = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db.update({login: local})
+    if login in db:
+        password_db = db[login]['chain'][-1]['password']
         if password_db == password:
             response = make_response()
             response.set_cookie('login', login)
             response.url = '127.0.0.1:5000/account'
-    return response, 302
+        return response, 302
 
 
 @app.route('/account', methods=['GET'])
@@ -78,42 +76,70 @@ def account():
     """
     cookies = request.cookies
     login = cookies['login']
-    db = readFile('data/db.pkl')
-    if login in db['users']:
+    db = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db.update({login: local})
+    if login in db:
         response = {
-            'user_data': db['users'][login]['chain'][-1]['user_data'],
-            'files_ids_to_sign': db['users'][login]['to_sign'],
-            'my_files': db['users'][login]['my_docs']
+            'user_data': db[login]['chain'][-1]['user_data'],
+            'files_ids_to_sign': db[login]['to_sign'],
+            'my_files': db[login]['my_docs']
         }
         return jsonify(response), 200
 
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    file = request.files['file']
+    file_name = request.values['file_name']
+    file = eval(request.values['data'])
+    str_file = ''
+    for i in file:
+        str_file += f'{i}: {file[i]}\n'
     cookies = request.cookies
     login = cookies['login']
-    db = readFile('data/db.pkl')
-    if bool(file.filename):
-        file_bytes = file.read()
-        blockchain = FileBlockchain(doc_name=file.filename, doc_version=0, owner_login=login, document=str(file_bytes))
-        db['files'].update({blockchain.last_block['id']: blockchain.__dict__})
-        db['users'][login]['to_sign'].append(blockchain.last_block['id'])
-        rewriteFile('data/db.pkl', db)
-        response = {'status': 'OK', 'message': 'File uploaded'}
-        return jsonify(response), 200
-    else:
-        response = {'status': 'BAD', 'message': '', }
-        return jsonify(response), 400
+    db_files = {}
+    for i in files.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'id':
+                f_id = i[j]
+        db_files.update({f_id: local})
+    db_users = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db_users.update({login: local})
+    blockchain = FileBlockchain(doc_name=file_name, doc_version=0, owner_login=login, document=str_file)
+    files.insert_one({'chain': blockchain.chain, 'id': blockchain.last_block['id']})
+    curr_to_sign = db_users[login]['to_sign']
+    curr_to_sign.append(blockchain.last_block['id'])
+    users.update_one({'login': login}, {'$set': {'to_sign': curr_to_sign}})
+    response = {'status': 'OK', 'message': 'File uploaded'}
+    return jsonify(response), 200
 
 
-@app.route('/file_info', methods=['GET'])
+@app.route('/file_info', methods=['POST'])
 def file_info():
     file_id = request.values['id']
-    db = readFile('data/db.pkl')
-    files = db['files']
-    if file_id in files:
-        file = db['files'][file_id]['chain'][-1]
+    db_files = {}
+    for i in files.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'id':
+                f_id = i[j]
+        db_files.update({f_id: local})
+    if file_id in db_files:
+        file = db_files[file_id]['chain'][-1]
         if 'owner_signature' in file:
             del file['owner_signature']
         if 'signer_signature' in file:
@@ -132,28 +158,55 @@ def sign_file_own():
     login = cookies['login']
     id_to_sign = request.values['id']
 
-    db = readFile('data/db.pkl')
-    chain = db['users'][login]['chain']
-    db['users'][login]['my_docs'].append(id_to_sign)
-    db['users'][login]['to_sign'].remove(id_to_sign)
-    my_docs = db['users'][login]['my_docs']
-    to_sign = db['users'][login]['to_sign']
-    doc_ver = db['files'][id_to_sign]['chain'][-1]['version']
+    db_files = {}
+    for i in files.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'id':
+                f_id = i[j]
+        db_files.update({f_id: local})
+    db_users = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db_users.update({login: local})
+
+    chain = db_users[login]['chain']
+
+    curr_to_sign = db_users[login]['to_sign']
+    curr_to_sign.remove(id_to_sign)
+    users.update_one({'login': login}, {'$set': {'to_sign': curr_to_sign}})
+    curr_my_doc = db_users[login]['to_sign']
+    curr_my_doc.append(id_to_sign)
+    users.update_one({'login': login}, {'$set': {'my_docs': curr_my_doc}})
+    db_users[login]['my_docs'].append(id_to_sign)
+    db_users[login]['to_sign'].remove(id_to_sign)
+    my_docs = db_users[login]['my_docs']
+    to_sign = db_users[login]['to_sign']
+    doc_ver = db_files[id_to_sign]['chain'][-1]['version']
 
     new_block_user = UserBlockchain.new_block(chain=chain, my_docs=my_docs, to_sign=to_sign, doc_ver=doc_ver,
                                               doc_id=id_to_sign)
-    db['users'][login]['chain'].append(new_block_user)
 
-    chain = db['files'][id_to_sign]['chain']
-    doc_version = db['files'][id_to_sign]['chain'][-1]['version']
-    doc_name = db['files'][id_to_sign]['chain'][-1]['name']
-    owner_signature = db['users'][login]['chain'][-1]['signature']
+    prev_chain = db_users[login]['chain']
+    prev_chain.append(new_block_user)
+    users.update_one({'login': login}, {'$set': {'chain': prev_chain}})
+
+    chain = db_files[id_to_sign]['chain']
+    doc_version = db_files[id_to_sign]['chain'][-1]['version']
+    doc_name = db_files[id_to_sign]['chain'][-1]['name']
+    owner_signature = db_users[login]['chain'][-1]['signature']
 
     new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
                                               owner_signature=owner_signature, owner_login=login,
-                                              owner_signature_ts=db['users'][login]['chain'][-1]['timestamp'])
-    db['files'][id_to_sign]['chain'].append(new_block_file)
-    rewriteFile('data/db.pkl', db)
+                                              owner_signature_ts=db_users[login]['chain'][-1]['timestamp'])
+    prev_chain = db_files[id_to_sign]['chain']
+    prev_chain.append(new_block_file)
+    files.update_one({'id': id_to_sign}, {'$set': {'chain': prev_chain}})
 
     response = {'status': 'OK', 'message': 'File signed'}
     return jsonify(response), 200
@@ -165,11 +218,19 @@ def send_to_sign():
     login = cookies['login']
     signer_login = request.values['signer_login']
     id_to_sign = request.values['id']
-    db = readFile('data/db.pkl')
-    owner_file_ids = db['users'][login]['my_docs']
+    db_users = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db_users.update({login: local})
+    owner_file_ids = db_users[login]['my_docs']
     if id_to_sign in owner_file_ids:
-        db['users'][signer_login]['to_sign'].append(id_to_sign)
-        rewriteFile('data/db.pkl', db)
+        curr_to_sign = db_users[signer_login]['to_sign']
+        curr_to_sign.append(id_to_sign)
+        users.update_one({'login': signer_login}, {'$set': {'to_sign': curr_to_sign}})
         response = {'status': 'OK', 'message': f'File sent to user {signer_login}'}
         return jsonify(response), 200
 
@@ -179,50 +240,78 @@ def sing_smbds_doc():
     cookies = request.cookies
     signer_login = cookies['login']
     file_id = request.values['id']
-    db = readFile('data/db.pkl')
-    files_to_sign = db['users'][signer_login]['to_sign']
+    db_files = {}
+    for i in files.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'id':
+                f_id = i[j]
+        db_files.update({f_id: local})
+    db_users = {}
+    for i in users.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'login':
+                login = i[j]
+        db_users.update({login: local})
+    files_to_sign = db_users[signer_login]['to_sign']
     if file_id in files_to_sign:
-        owner_login = db['files'][file_id]['chain'][-1]['owner_login']
-        chain = db['users'][owner_login]['chain']
-        db['users'][signer_login]['to_sign'].remove(file_id)
-        my_docs = db['users'][owner_login]['my_docs']
-        to_sign = db['users'][owner_login]['to_sign']
-        doc_ver = db['files'][file_id]['chain'][-1]['version']
-        doc_ver = db['files'][file_id]['chain'][-1]['version']
+        owner_login = db_files[file_id]['chain'][-1]['owner_login']
+        chain = db_users[owner_login]['chain']
+        db_users[signer_login]['to_sign'].remove(file_id)
+        my_docs = db_users[owner_login]['my_docs']
+        to_sign = db_users[owner_login]['to_sign']
+        doc_ver = db_files[file_id]['chain'][-1]['version']
+
+        curr_to_sign = db_users[signer_login]['to_sign']
+        curr_to_sign.remove(file_id)
+        users.update_one({'login': signer_login}, {'$set': {'to_sign': curr_to_sign}})
 
         new_block_user = UserBlockchain.new_block(chain=chain,
                                                   my_docs=my_docs,
                                                   to_sign=to_sign,
                                                   doc_ver=doc_ver,
                                                   doc_id=file_id,
-                                                  signer_signature=db['users'][signer_login]['chain'][-1]['signature'],
+                                                  signer_signature=db_users[signer_login]['chain'][-1]['signature'],
                                                   signer_login=signer_login,
-                                                  signer_data=db['users'][signer_login]['chain'][-1]['user_data']
+                                                  signer_data=db_users[signer_login]['chain'][-1]['user_data']
                                                   )
-        db['users'][owner_login]['chain'].append(new_block_user)
+        db_users[owner_login]['chain'].append(new_block_user)
+        prev_chain = db_users[owner_login]['chain']
+        prev_chain.append(new_block_user)
+        users.update_one({'login': owner_login}, {'$set': {'chain': prev_chain}})
 
-        chain = db['files'][file_id]['chain']
-        doc_version = db['files'][file_id]['chain'][-1]['version']
-        doc_name = db['files'][file_id]['chain'][-1]['name']
-        owner_signature = db['users'][owner_login]['chain'][-1]['signature']
+        chain = db_files[file_id]['chain']
+        doc_version = db_files[file_id]['chain'][-1]['version']
+        doc_name = db_files[file_id]['chain'][-1]['name']
+        owner_signature = db_users[owner_login]['chain'][-1]['signature']
         new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
                                                   owner_signature=owner_signature, owner_login=owner_login,
                                                   signer_login=signer_login,
-                                                  signer_signature=db['users'][signer_login]['chain'][-1]['signature'],
-                                                  owner_signature_ts=db['users'][signer_login]['chain'][-1][
+                                                  signer_signature=db_users[signer_login]['chain'][-1]['signature'],
+                                                  owner_signature_ts=db_users[signer_login]['chain'][-1][
                                                       'timestamp'],
-                                                  signer_signature_ts=db['users'][owner_login]['chain'][-1]['timestamp']
+                                                  signer_signature_ts=db_users[owner_login]['chain'][-1]['timestamp']
                                                   )
 
-        db['files'][file_id]['chain'].append(new_block_file)
-        rewriteFile('data/db.pkl', db)
+        db_files[file_id]['chain'].append(new_block_file)
+        prev_chain = db_files[file_id]['chain']
+        prev_chain.append(new_block_file)
+        files.update_one({'id': file_id}, {'$set': {'chain': prev_chain}})
         response = {'status': 'OK', 'message': 'File signed'}
         return jsonify(response), 200
 
 
+@app.route('/', methods=['GET'])
+def test():
+    response = {'status': 'OK', 'message': 'Work'}
+    return jsonify(response), 200
+
+
 if __name__ == '__main__':
-    # инитим огурчики, решил так ибо нет времени разбираться с редисом/монгой или подобными(
-    inin_pkl()
-    db = readFile('data/db.pkl')
+    users.delete_many({})
+    files.delete_many({})
 
     app.run(host='127.0.0.1', port=5000)
