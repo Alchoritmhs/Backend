@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  backend:
+   build: .
+   ports:
+     - 5000:5000
+   volumes:
+     - $PWD:/app
+   links:
+     - mongodb
+
+  mongodb:
+   image: mongo:3.2
+   volumes:
+     - './data:/data/db'
