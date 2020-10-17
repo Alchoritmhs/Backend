@@ -191,7 +191,7 @@ if __name__ == '__main__':
     doc_name = 'договор сантехника'
     doc_version = '1'
     document = 'договор.txt'
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 # file1 = create_document(doc_name, doc_version, chain_user_1, chain_user_2, document)
 # file1 = sign_document_by_signer(file1, chain_user_1, chain_user_2, signature2)
