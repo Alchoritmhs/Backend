@@ -116,8 +116,8 @@ def upload():
         for j in i:
             local.update({j: i[j]})
             if j == 'login':
-                login = i[j]
-        db_users.update({login: local})
+                logini = i[j]
+        db_users.update({logini: local})
     blockchain = FileBlockchain(doc_name=file_name, doc_version=0, owner_login=login, document=str_file)
     files.insert_one({'chain': blockchain.chain, 'id': blockchain.last_block['id']})
     curr_to_sign = db_users[login]['to_sign']
@@ -172,8 +172,8 @@ def sign_file_own():
         for j in i:
             local.update({j: i[j]})
             if j == 'login':
-                login = i[j]
-        db_users.update({login: local})
+                logini = i[j]
+        db_users.update({logini: local})
 
     chain = db_users[login]['chain']
 
