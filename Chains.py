@@ -68,21 +68,25 @@ class FileBlockchain:
 
 
 class UserBlockchain:
-    def __init__(self, user_data, signature):
+    def __init__(self, user_data, login, password, signature):
         self.chain = []
 
         # список файлов на подпись ПОКА НЕ ПРИДУМАЛ, ЧТО С ЭТИМ ДЕЛАТЬ
         self.to_sign = []
+        self.my_docs = []
         # Создание блока генезиса
-        self.generic_block(user_data=user_data, signature=signature)
+        self.generic_block(user_data=user_data, login=login, signature=signature, password=password)
 
-    def generic_block(self, user_data, signature):
+    def generic_block(self, user_data, login, password, signature):
         block = {
             'index': len(self.chain) + 1,  # номер в цепочка
             'timestamp': time.time(),  # тс
             'signature': signature,  # подпись
             'user_data': user_data,
-            'id': UserBlockchain.hash(user_data),
+            'to_sign': str(self.to_sign),
+            'my_docs': str(self.my_docs),
+            'login': login,
+            'password': password,
             'previous_hash': UserBlockchain.hash(user_data),  # предыдущий хэш
         }
         self.chain.append(block)
@@ -101,10 +105,14 @@ class UserBlockchain:
             'doc_ver': doc_ver,
             'signer_id': signer_id,
             'signer_data': signer_data,
-            'id': UserBlockchain.hash(user_data),
+            'to_sign': str(self.to_sign),
+            'my_docs': str(self.my_docs),
+            'login': self.last_block['login'],
+            'password': self.last_block['password'],
             'previous_hash': UserBlockchain.hash(previous_hash),  # предыдущий хэш
         }
-
+        self.to_sign = []
+        self.my_docs = []
         self.chain.append(block)
         return block
 
@@ -167,29 +175,29 @@ def sign_document_by_signer(file, owner, signer, signature):
         return file
 
 
-u_data1 = {
-    'name': 'Pavel',
-    'surname': 'Razuvaev'
-}
-signature1 = '12345'
-
-u_data2 = {
-    'name': 'Oleg',
-    'surname': 'Popov'
-}
-
-signature2 = '67890'
-chain_user_1 = UserBlockchain(user_data=u_data1, signature=signature1)
-chain_user_2 = UserBlockchain(user_data=u_data2, signature=signature2)
-
-doc_name = 'договор сантехники'
-doc_version = '1'
-owner_id = chain_user_1.last_block['id']
-signer_id = chain_user_2.last_block['id']
-owner_signature = chain_user_1.last_block['signature']
-signer_signature = chain_user_2.last_block['signature']
-owner_signature_ts = chain_user_1.last_block['timestamp']
-signer_signature_ts = chain_user_2.last_block['timestamp']
-document = 'договор.txt'
+# u_data1 = {
+#     'name': 'Pavel',
+#     'surname': 'Razuvaev'
+# }
+# signature1 = '12345'
+#
+# u_data2 = {
+#     'name': 'Oleg',
+#     'surname': 'Popov'
+# }
+#
+# signature2 = '67890'
+# chain_user_1 = UserBlockchain(user_data=u_data1, signature=signature1)
+# # chain_user_2 = UserBlockchain(user_data=u_data2, signature=signature2)
+#
+# doc_name = 'договор сантехники'
+# doc_version = '1'
+# owner_id = chain_user_1.last_block['id']
+# signer_id = chain_user_2.last_block['id']
+# owner_signature = chain_user_1.last_block['signature']
+# signer_signature = chain_user_2.last_block['signature']
+# owner_signature_ts = chain_user_1.last_block['timestamp']
+# signer_signature_ts = chain_user_2.last_block['timestamp']
+# document = 'договор.txt'
 
 

@@ -1,29 +1,34 @@
 /register
-curl -i -X POST --data-binary "user_data={'name': 'pavel'}&signature=12345" 127.0.0.1:5000/register
+curl -i -X POST --data-binary "user_data={'name': 'pavel'}&signature=12345&login=kaka&password=puka" 127.0.0.1:5000/register
 
 user_data - любой json, любой набор данных
-response: {"status":"User registered 1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528"} -
-тут уникальный айди
+signature - строка для создания подписи (ввод пользователь)
+login и password понятно что для входа в акк
+response:
+{"message":"User registered","status":"OK"}
 
 
 /login
-curl -i -X POST --data-binary "user_id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528&signature=12345" 127.0.0.1:5000/login
+curl -i -X POST --data-binary "login=kaka&password=puka" 127.0.0.1:5000/login
 
-user_id = айдишник созданного юзера
+login и password понятно что для входа в акк
 response:
 HTTP/1.0 200 OK
 Content-Type: text/html; charset=utf-8
-Set-Cookie: id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528; Path=/
+Set-Cookie: login=kaka; Path=/
 Content-Length: 0
 Server: Werkzeug/1.0.1 Python/3.7.2
 Date: Sat, 17 Oct 2020 07:57:14 GMT
 возвращает куку для дальнейшей работы
 
 /account
-curl -i -X GET --cookie "user_id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528" 127.0.0.1:5000/account
+curl -i -X GET --cookie "login=kaka" 127.0.0.1:5000/account
 
 response:
+{"files_ids_to_sign":"[]","my_files":"[]","user_data":{"name":"pavel"}}
+files_ids_to_sign - список айди доков на подпись
+my_files - файлы пользователя
+user_data - инфа о юзере с регистрации
 
-{"files_ids_to_sign":[],"user_data":{"name":"pavel"}} - список айди файлов для подписи и дата пользователя
 
 

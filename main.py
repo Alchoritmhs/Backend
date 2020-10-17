@@ -2,6 +2,8 @@ from Chains import UserBlockchain, FileBlockchain, create_document, sign_documen
 from helpers import inin_pkl, readFile, rewriteFile
 from uuid import uuid4
 import os
+import time
+import hashlib
 from flask import Flask, jsonify, request, make_response
 
 
@@ -12,6 +14,8 @@ def magic(signature_1, signature_2):  # тут, как я понял должн�
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
 node_identifier = str(uuid4()).replace('-', '')
+def get_hash(s):
+    return hashlib.sha256(s.encode()).hexdigest()
 
 
 @app.route('/register', methods=['POST'])
@@ -23,12 +27,15 @@ def register():
     :return:
     """
     values = request.values
-    blockchain = UserBlockchain(user_data=eval(values['user_data']), signature=values['signature'])
-    user_id = blockchain.last_block['id']
+    login = values['login']
+    password = get_hash(values['password'])
+    signature = get_hash(f"{values['signature']}{time.time()}")
+    user_data = eval(values['user_data'])
+    blockchain = UserBlockchain(user_data=user_data, signature=signature, login=login, password=password)
     db = readFile('data/db.pkl')
-    db['users'].update({user_id: blockchain})
+    db['users'].update({login: blockchain.__dict__})
     rewriteFile('data/db.pkl', db)
-    response = {'status': f'OK\nUser registered {user_id}'}
+    response = {'status': 'OK', 'message': 'User registered', }
     return jsonify(response), 200
 
 
@@ -41,14 +48,15 @@ def login():
         :return:
     """
     values = request.values
-    user_id = values['user_id']
-    signarure = values['signature']
+    login = values['login']
+    password = get_hash(values['password'])
     db = readFile('data/db.pkl')
-    if user_id in db['users']:
-        if signarure == db['users'][user_id].last_block['signature']:
+    if login in db['users']:
+        password_db = db['users'][login]['chain'][-1]['password']
+        if password_db == password:
             response = make_response()
-            response.set_cookie('id', user_id)
-            response.url = '127.0.0.1:5000/lk'
+            response.set_cookie('login', login)
+            response.url = '127.0.0.1:5000/account'
     return response, 302
 
 
@@ -60,12 +68,13 @@ def account():
         :return:
     """
     cookies = request.cookies
-    id_cookie = cookies['user_id']
+    login = cookies['login']
     db = readFile('data/db.pkl')
-    if id_cookie in db['users']:
+    if login in db['users']:
         response = {
-            'user_data': db['users'][id_cookie].last_block['user_data'],
-            'files_ids_to_sign': db['users'][id_cookie].to_sign
+            'user_data': db['users'][login]['chain'][-1]['user_data'],
+            'files_ids_to_sign': db['users'][login]['chain'][-1]['to_sign'],
+            'my_files': db['users'][login]['chain'][-1]['my_docs']
         }
         return jsonify(response), 200
 
