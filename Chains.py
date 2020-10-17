@@ -29,24 +29,24 @@ class FileBlockchain:
         return block
 
     # добавление блока
-    def new_block(self, doc_name, doc_version, owner_data, signer_data, owner_signature, signer_signature,
-                  owner_signature_ts, signer_signature_ts, document, previous_hash=None):
+    @staticmethod
+    def new_block(chain, doc_name, doc_version, owner_login, owner_signature, document=None, signer_login=None,
+                  signer_signature=None, owner_signature_ts=None, signer_signature_ts=None):
+        last_block = chain[-1]
         block = {
-            'index': len(self.chain) + 1,  # номер в цепочка
+            'index': len(chain) + 1,  # номер в цепочка
             'timestamp': time.time(),
             'version': doc_version,
             'name': doc_name,
-            'owner_data': owner_data,
-            'signer_data': signer_data,
+            'owner_login': owner_login,
+            'signer_login': signer_login,
             'owner_signature': owner_signature,
             'signer_signature': signer_signature,
             'owner_signature_ts': owner_signature_ts,
             'signer_signature_ts': signer_signature_ts,
             'document': document,
-            'id': FileBlockchain.hash(document),
-            'previous_hash': FileBlockchain.hash(previous_hash)  # сам себе хэш для генерик блока
+            'previous_hash': FileBlockchain.hash(last_block)
         }
-        self.chain.append(block)
         return block
 
     @property
@@ -85,27 +85,26 @@ class UserBlockchain:
         return block
 
     # добавление блока
-    def new_block(self, user_data, signer_id, signer_data, doc_id, doc_ver, signer_signature,
-                  previous_hash=None):
+    @staticmethod
+    def new_block(chain, to_sign, my_docs, doc_id, doc_ver,
+                  signer_signature=None, signer_login=None, signer_data=None):
+        last_block = chain[-1]
         block = {
-            'index': len(self.chain) + 1,  # номер в цепочка
+            'index': len(chain) + 1,  # номер в цепочка
             'timestamp': time.time(),  # тс
-            'signature': self.last_block['signature'],  # подпись
+            'signature': last_block['signature'],  # подпись
             'signer_signature': signer_signature,
-            'user_data': user_data,
+            'user_data': last_block['user_data'],
             'doc_id': doc_id,
             'doc_ver': doc_ver,
-            'signer_id': signer_id,
+            'signer_login': signer_login,
             'signer_data': signer_data,
-            'to_sign': str(self.to_sign),
-            'my_docs': str(self.my_docs),
-            'login': self.last_block['login'],
-            'password': self.last_block['password'],
-            'previous_hash': UserBlockchain.hash(previous_hash),  # предыдущий хэш
+            'to_sign': str(to_sign),
+            'my_docs': str(my_docs),
+            'login': last_block['login'],
+            'password': last_block['password'],
+            'previous_hash': UserBlockchain.hash(last_block),  # предыдущий хэш
         }
-        self.to_sign = []
-        self.my_docs = []
-        self.chain.append(block)
         return block
 
     @property

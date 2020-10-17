@@ -50,3 +50,21 @@ response: тут выводит все про файл за исключение
 
 в message document - наш файл, name - имя файла, version - версия файла
 
+
+/sign_doc_own - подпись своего файла для дайльнейшей отправки кому-либо
+curl -i -X POST --cookie "login=kaka" --data-binary "id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/sign_doc_own
+
+тут id - id файла, который хотим подписать
+возвращает ок если подписалось
+
+
+/send_doc_to_sign - отправить файл на подпись кому-либо
+curl -i -X POST --cookie "login=kaka" --data-binary "signer_login=lev&id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/send_doc_to_sign
+signer_login - тот, кто должен подписать файл
+id - айди уже подписанного владельцем файла другому человеку
+
+response:
+{"message":"File sent to user lev","status":"OK"}
+
+
+ОСТАЛОСЬ СДЕЛАТЬ ПОДПИСЬ ВТОРОГО ЧЕЛОВЕКА И ГОТОВО

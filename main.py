@@ -7,6 +7,7 @@ import hashlib
 from flask import Flask, jsonify, request, make_response
 from werkzeug.utils import secure_filename
 
+
 def magic(signature_1, signature_2):  # тут, как я понял должна быть распознавашка
     return '***'
 
@@ -14,6 +15,8 @@ def magic(signature_1, signature_2):  # тут, как я понял должн�
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
 node_identifier = str(uuid4()).replace('-', '')
+
+
 def get_hash(s):
     return hashlib.sha256(s.encode()).hexdigest()
 
@@ -78,6 +81,7 @@ def account():
         }
         return jsonify(response), 200
 
+
 @app.route('/upload', methods=['POST'])
 def upload():
     file = request.files['file']
@@ -95,6 +99,7 @@ def upload():
     else:
         response = {'status': 'BAD', 'message': '', }
         return jsonify(response), 400
+
 
 @app.route('/file_info', methods=['GET'])
 def file_info():
@@ -114,7 +119,54 @@ def file_info():
         response = {'status': 'OK', 'message': file}
         return jsonify(response), 200
 
-def
+
+@app.route('/sign_doc_own', methods=['POST'])
+def sign_file_own():
+    cookies = request.cookies
+    login = cookies['login']
+    id_to_sign = request.values['id']
+
+    db = readFile('data/db.pkl')
+    chain = db['users'][login]['chain']
+    db['users'][login]['my_docs'].append(id_to_sign)
+    db['users'][login]['to_sign'].remove(id_to_sign)
+    my_docs = db['users'][login]['my_docs']
+    to_sign = db['users'][login]['to_sign']
+    doc_ver = db['files'][id_to_sign]['chain'][-1]['version']
+
+    new_block_user = UserBlockchain.new_block(chain=chain, my_docs=my_docs, to_sign=to_sign, doc_ver=doc_ver,
+                                              doc_id=id_to_sign)
+    db['users'][login]['chain'].append(new_block_user)
+
+    chain = db['files'][id_to_sign]['chain']
+    doc_version = db['files'][id_to_sign]['chain'][-1]['version']
+    doc_name = db['files'][id_to_sign]['chain'][-1]['name']
+    owner_signature = db['users'][login]['chain'][-1]['signature']
+
+    new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
+                                              owner_signature=owner_signature, owner_login=login)
+    db['files'][id_to_sign]['chain'].append(new_block_file)
+    rewriteFile('data/db.pkl', db)
+
+    response = {'status': 'OK', 'message': 'File signed'}
+    return jsonify(response), 200
+
+
+@app.route('/send_doc_to_sign', methods=['POST'])
+def send_to_sign():
+    cookies = request.cookies
+    login = cookies['login']
+    signer_login = request.values['signer_login']
+    id_to_sign = request.values['id']
+    db = readFile('data/db.pkl')
+    owner_file_ids = db['users'][login]['my_docs']
+    if id_to_sign in owner_file_ids:
+        db['users'][signer_login]['to_sign'].append(id_to_sign)
+        rewriteFile('data/db.pkl', db)
+        response = {'status': 'OK', 'message': f'File sent to user {signer_login}'}
+        return jsonify(response), 200
+
+
 
 
 if __name__ == '__main__':
