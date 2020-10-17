@@ -1,17 +1,10 @@
-from Chains import UserBlockchain, FileBlockchain, create_document, sign_document_by_signer
+from Chains import UserBlockchain, FileBlockchain
 from helpers import inin_pkl, readFile, rewriteFile
 from uuid import uuid4
-import os
 import time
 import hashlib
 from flask import Flask, jsonify, request, make_response
 from pymongo import MongoClient
-from werkzeug.utils import secure_filename
-
-
-def magic(signature_1, signature_2):  # тут, как я понял должна быть распознавашка
-    return '***'
-
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
@@ -23,10 +16,8 @@ chains = client.chains
 """
 добавление
 users.insert_one({"name":"bob", "secondname":"smith"})
-
 удаление
 users.delete_one({"name":"bob"})
-
 изменение
 users.find_one_and_update({"name": "bob"}, {"$set": {"name":"Tom"}})
 """
@@ -159,7 +150,8 @@ def sign_file_own():
     owner_signature = db['users'][login]['chain'][-1]['signature']
 
     new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
-                                              owner_signature=owner_signature, owner_login=login)
+                                              owner_signature=owner_signature, owner_login=login,
+                                              owner_signature_ts=db['users'][login]['chain'][-1]['timestamp'])
     db['files'][id_to_sign]['chain'].append(new_block_file)
     rewriteFile('data/db.pkl', db)
 
@@ -182,23 +174,55 @@ def send_to_sign():
         return jsonify(response), 200
 
 
+@app.route('/sing_smbds_doc', methods=['POST'])
+def sing_smbds_doc():
+    cookies = request.cookies
+    signer_login = cookies['login']
+    file_id = request.values['id']
+    db = readFile('data/db.pkl')
+    files_to_sign = db['users'][signer_login]['to_sign']
+    if file_id in files_to_sign:
+        owner_login = db['files'][file_id]['chain'][-1]['owner_login']
+        chain = db['users'][owner_login]['chain']
+        db['users'][signer_login]['to_sign'].remove(file_id)
+        my_docs = db['users'][owner_login]['my_docs']
+        to_sign = db['users'][owner_login]['to_sign']
+        doc_ver = db['files'][file_id]['chain'][-1]['version']
+        doc_ver = db['files'][file_id]['chain'][-1]['version']
+
+        new_block_user = UserBlockchain.new_block(chain=chain,
+                                                  my_docs=my_docs,
+                                                  to_sign=to_sign,
+                                                  doc_ver=doc_ver,
+                                                  doc_id=file_id,
+                                                  signer_signature=db['users'][signer_login]['chain'][-1]['signature'],
+                                                  signer_login=signer_login,
+                                                  signer_data=db['users'][signer_login]['chain'][-1]['user_data']
+                                                  )
+        db['users'][owner_login]['chain'].append(new_block_user)
+
+        chain = db['files'][file_id]['chain']
+        doc_version = db['files'][file_id]['chain'][-1]['version']
+        doc_name = db['files'][file_id]['chain'][-1]['name']
+        owner_signature = db['users'][owner_login]['chain'][-1]['signature']
+        new_block_file = FileBlockchain.new_block(chain=chain, doc_version=doc_version, doc_name=doc_name,
+                                                  owner_signature=owner_signature, owner_login=owner_login,
+                                                  signer_login=signer_login,
+                                                  signer_signature=db['users'][signer_login]['chain'][-1]['signature'],
+                                                  owner_signature_ts=db['users'][signer_login]['chain'][-1][
+                                                      'timestamp'],
+                                                  signer_signature_ts=db['users'][owner_login]['chain'][-1]['timestamp']
+                                                  )
+
+        db['files'][file_id]['chain'].append(new_block_file)
+        rewriteFile('data/db.pkl', db)
+        response = {'status': 'OK', 'message': 'File signed'}
+        return jsonify(response), 200
 
 
 if __name__ == '__main__':
     # инитим огурчики, решил так ибо нет времени разбираться с редисом/монгой или подобными(
     inin_pkl()
     db = readFile('data/db.pkl')
-    doc_name = 'договор сантехника'
-    doc_version = '1'
-    document = 'договор.txt'
-    app.run(host='0.0.0.0', port=5000, debug=True)
 
-# file1 = create_document(doc_name, doc_version, chain_user_1, chain_user_2, document)
-# file1 = sign_document_by_signer(file1, chain_user_1, chain_user_2, signature2)
-#
-# print('владелец файла')
-# print(chain_user_1.__dict__)
-# print('подписант файла')
-# print(chain_user_2.__dict__)
-# print('файла')
-# print(file1.__dict__)
+    app.run(host='127.0.0.1', port=5000)

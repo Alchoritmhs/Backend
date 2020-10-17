@@ -67,4 +67,6 @@ response:
 {"message":"File sent to user lev","status":"OK"}
 
 
-ОСТАЛОСЬ СДЕЛАТЬ ПОДПИСЬ ВТОРОГО ЧЕЛОВЕКА И ГОТОВО
+/sing_smbds_doc - подписать кем-то присланный файл
+curl -i -X POST --cookie "login=lev" --data-binary "id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/sing_smbds_doc
+id - айди уже подписанного владельцем файла, который адресован нам и мы хотим его подписать
