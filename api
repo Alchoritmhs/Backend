@@ -1,5 +1,5 @@
 /register
-curl -i -X POST --data-binary "user_data={'name': 'pavel'}&signature=12345&login=kaka&password=puka" 127.0.0.1:5000/register
+curl -i -X POST --data-binary "user_data={'name': 'pavel'}&signature=74657634563&login=zirae1&password=PASSWORD" 127.0.0.1:5000/register
 
 user_data - любой json, любой набор данных
 signature - строка для создания подписи (ввод пользователь)
@@ -22,7 +22,7 @@ Date: Sat, 17 Oct 2020 07:57:14 GMT
 возвращает куку для дальнейшей работы
 
 /account
-curl -i -X GET --cookie "login=kaka" 127.0.0.1:5000/account
+curl -i -X GET --cookie "login=zirae1" 127.0.0.1:5000/account
 
 response:
 {"files_ids_to_sign":"[]","my_files":"[]","user_data":{"name":"pavel"}}
@@ -31,18 +31,17 @@ my_files - файлы пользователя
 user_data - инфа о юзере с регистрации
 
 /upload
-curl POST -F "file=@C:/doc.txt" --cookie "login=kaka"  127.0.0.1:5000/upload
+curl POST --data-binary "file_name=myfile.txt&data={'содержание договора':'тут'}" --cookie "login=zirae1"  127.0.0.1:5000/upload
 
 response:
 {"message":"File uploaded","status":"OK"}
 
 нужно делать с кукой, что говорит серверу от кого заливается файл и кто овнер
-Ваня сказал остаить тхт файлы, а то ***
-после этого запроса добавляет сюда files_ids_to_sign id этого файла
+
 
 
 /file_info
-curl -i -X GET --cookie "login=kaka"  127.0.0.1:5000/file_info?id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a
+curl POST --cookie "login=kaka" --data-binary "id=72b2eefa55aae5a6d71bad588c30ea6cb7a16d5f9e20a029e04008fbf05e35c8" 127.0.0.1:5000/file_info
 
 response: тут выводит все про файл за исключением служебной инфы и подписей
 {"message":{"document":"b'docdoc\\n'","id":"087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a",
@@ -52,14 +51,14 @@ response: тут выводит все про файл за исключение
 
 
 /sign_doc_own - подпись своего файла для дайльнейшей отправки кому-либо
-curl -i -X POST --cookie "login=kaka" --data-binary "id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/sign_doc_own
+curl -i -X POST --cookie "login=zirae1" --data-binary "id=eb45174a9fad8a0bab9bff80170b1de41aa6a7dd47f6e11a89f029cede8b643a" 127.0.0.1:5000/sign_doc_own
 
 тут id - id файла, который хотим подписать
 возвращает ок если подписалось
 
 
 /send_doc_to_sign - отправить файл на подпись кому-либо
-curl -i -X POST --cookie "login=kaka" --data-binary "signer_login=lev&id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/send_doc_to_sign
+curl -i -X POST --cookie "login=zirae1" --data-binary "signer_login=lev&id=eb45174a9fad8a0bab9bff80170b1de41aa6a7dd47f6e11a89f029cede8b643a" 127.0.0.1:5000/send_doc_to_sign
 signer_login - тот, кто должен подписать файл
 id - айди уже подписанного владельцем файла другому человеку
 
@@ -68,5 +67,5 @@ response:
 
 
 /sing_smbds_doc - подписать кем-то присланный файл
-curl -i -X POST --cookie "login=lev" --data-binary "id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a" 127.0.0.1:5000/sing_smbds_doc
+curl -i -X POST --cookie "login=lev" --data-binary "id=eb45174a9fad8a0bab9bff80170b1de41aa6a7dd47f6e11a89f029cede8b643a" 127.0.0.1:5000/sing_smbds_doc
 id - айди уже подписанного владельцем файла, который адресован нам и мы хотим его подписать
