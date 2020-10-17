@@ -30,5 +30,23 @@ files_ids_to_sign - список айди доков на подпись
 my_files - файлы пользователя
 user_data - инфа о юзере с регистрации
 
+/upload
+curl POST -F "file=@C:/doc.txt" --cookie "login=kaka"  127.0.0.1:5000/upload
 
+response:
+{"message":"File uploaded","status":"OK"}
+
+нужно делать с кукой, что говорит серверу от кого заливается файл и кто овнер
+Ваня сказал остаить тхт файлы, а то ***
+после этого запроса добавляет сюда files_ids_to_sign id этого файла
+
+
+/file_info
+curl -i -X GET --cookie "login=kaka"  127.0.0.1:5000/file_info?id=087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a
+
+response: тут выводит все про файл за исключением служебной инфы и подписей
+{"message":{"document":"b'docdoc\\n'","id":"087426d4b7d3f250f71d04b9e14fb928df8cf3ec0e3c2352789ddbd745e0102a",
+"name":"doc.txt","owner_login":"kaka","timestamp":1602940244.1843834,"version":0},"status":"OK"}
+
+в message document - наш файл, name - имя файла, version - версия файла
 

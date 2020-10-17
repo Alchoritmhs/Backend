@@ -5,30 +5,22 @@ import time
 
 # класс цепочки для файла, пока в ините каша, для хардкода, далее красивее сделаю
 class FileBlockchain:
-    def __init__(self, doc_name, doc_version, owner_id, owner_signature, owner_signature_ts, signer, document):
+    def __init__(self, doc_name, doc_version, owner_login, document):
         self.chain = []
 
         # Создание блока генезиса
-        self.generic_block(doc_name=doc_name, doc_version=doc_version, owner_id=owner_id,
-                           owner_signature=owner_signature, owner_signature_ts=owner_signature_ts,
-                           signer=signer, document=document)
-
-
+        self.generic_block(doc_name=doc_name, doc_version=doc_version, owner_login=owner_login, document=document)
 
     # отказался от генерика тут, тк логичнее,
     # что файл адекватнее созадвать с первым блоком,
     # тк отдельно от юзеров он существовать не может, пока писал создание дока передумал
-    def generic_block(self, doc_name, doc_version, owner_id, owner_signature,
-                      owner_signature_ts, signer, document):
+    def generic_block(self, doc_name, doc_version, owner_login, document):
         block = {
             'index': len(self.chain) + 1,  # номер в цепочка
             'timestamp': time.time(),
             'version': doc_version,
             'name': doc_name,
-            'owner_id': owner_id,
-            'owner_signature': owner_signature,
-            'owner_signature_ts': owner_signature_ts,
-            'signer_id': signer_id,
+            'owner_login': owner_login,
             'document': document,
             'id': FileBlockchain.hash(document),
             'previous_hash': FileBlockchain.hash(document)  # сам себе хэш для генерик блока
@@ -37,15 +29,15 @@ class FileBlockchain:
         return block
 
     # добавление блока
-    def new_block(self, doc_name, doc_version, owner_id, signer_id, owner_signature, signer_signature,
-                      owner_signature_ts, signer_signature_ts, document, previous_hash=None):
+    def new_block(self, doc_name, doc_version, owner_data, signer_data, owner_signature, signer_signature,
+                  owner_signature_ts, signer_signature_ts, document, previous_hash=None):
         block = {
             'index': len(self.chain) + 1,  # номер в цепочка
             'timestamp': time.time(),
             'version': doc_version,
             'name': doc_name,
-            'owner_id': owner_id,
-            'signer_id': signer_id,
+            'owner_data': owner_data,
+            'signer_data': signer_data,
             'owner_signature': owner_signature,
             'signer_signature': signer_signature,
             'owner_signature_ts': owner_signature_ts,
@@ -174,7 +166,6 @@ def sign_document_by_signer(file, owner, signer, signature):
                         doc_ver=file.last_block['version'], signer_signature=signature)
         return file
 
-
 # u_data1 = {
 #     'name': 'Pavel',
 #     'surname': 'Razuvaev'
@@ -199,5 +190,3 @@ def sign_document_by_signer(file, owner, signer, signature):
 # owner_signature_ts = chain_user_1.last_block['timestamp']
 # signer_signature_ts = chain_user_2.last_block['timestamp']
 # document = 'договор.txt'
-
-

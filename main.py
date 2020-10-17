@@ -5,7 +5,7 @@ import os
 import time
 import hashlib
 from flask import Flask, jsonify, request, make_response
-
+from werkzeug.utils import secure_filename
 
 def magic(signature_1, signature_2):  # тут, как я понял должна быть распознавашка
     return '***'
@@ -73,10 +73,48 @@ def account():
     if login in db['users']:
         response = {
             'user_data': db['users'][login]['chain'][-1]['user_data'],
-            'files_ids_to_sign': db['users'][login]['chain'][-1]['to_sign'],
-            'my_files': db['users'][login]['chain'][-1]['my_docs']
+            'files_ids_to_sign': db['users'][login]['to_sign'],
+            'my_files': db['users'][login]['my_docs']
         }
         return jsonify(response), 200
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    file = request.files['file']
+    cookies = request.cookies
+    login = cookies['login']
+    db = readFile('data/db.pkl')
+    if bool(file.filename):
+        file_bytes = file.read()
+        blockchain = FileBlockchain(doc_name=file.filename, doc_version=0, owner_login=login, document=str(file_bytes))
+        db['files'].update({blockchain.last_block['id']: blockchain.__dict__})
+        db['users'][login]['to_sign'].append(blockchain.last_block['id'])
+        rewriteFile('data/db.pkl', db)
+        response = {'status': 'OK', 'message': 'File uploaded'}
+        return jsonify(response), 200
+    else:
+        response = {'status': 'BAD', 'message': '', }
+        return jsonify(response), 400
+
+@app.route('/file_info', methods=['GET'])
+def file_info():
+    file_id = request.values['id']
+    db = readFile('data/db.pkl')
+    files = db['files']
+    if file_id in files:
+        file = db['files'][file_id]['chain'][-1]
+        if 'owner_signature' in file:
+            del file['owner_signature']
+        if 'signer_signature' in file:
+            del file['signer_signature']
+        if 'index' in file:
+            del file['index']
+        if 'previous_hash' in file:
+            del file['previous_hash']
+        response = {'status': 'OK', 'message': file}
+        return jsonify(response), 200
+
+def
 
 
 if __name__ == '__main__':
