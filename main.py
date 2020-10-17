@@ -311,7 +311,7 @@ def test():
 
 
 if __name__ == '__main__':
-    users.delete_many({})
-    files.delete_many({})
+    # users.delete_many({})
+    # files.delete_many({})
 
     app.run(host='127.0.0.1', port=5000)
