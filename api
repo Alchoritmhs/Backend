@@ -1,0 +1,29 @@
+/register
+curl -i -X POST --data-binary "user_data={'name': 'pavel'}&signature=12345" 127.0.0.1:5000/register
+
+user_data - любой json, любой набор данных
+response: {"status":"User registered 1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528"} -
+тут уникальный айди
+
+
+/login
+curl -i -X POST --data-binary "user_id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528&signature=12345" 127.0.0.1:5000/login
+
+user_id = айдишник созданного юзера
+response:
+HTTP/1.0 200 OK
+Content-Type: text/html; charset=utf-8
+Set-Cookie: id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528; Path=/
+Content-Length: 0
+Server: Werkzeug/1.0.1 Python/3.7.2
+Date: Sat, 17 Oct 2020 07:57:14 GMT
+возвращает куку для дальнейшей работы
+
+/account
+curl -i -X GET --cookie "user_id=1011b7f76c68e4b13f89618721e6f119bbaa4ffaf7db6188e5aa48b172209528" 127.0.0.1:5000/account
+
+response:
+
+{"files_ids_to_sign":[],"user_data":{"name":"pavel"}} - список айди файлов для подписи и дата пользователя
+
+

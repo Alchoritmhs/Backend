@@ -78,7 +78,7 @@ class UserBlockchain:
 
     def generic_block(self, user_data, signature):
         block = {
-            'index': len(self.chain) + 1,  # номер в цепочка, да я дебил начинаю с 1, хз как с 1 начать, при логике, что индекс некст блока это длина цепочки + 1
+            'index': len(self.chain) + 1,  # номер в цепочка
             'timestamp': time.time(),  # тс
             'signature': signature,  # подпись
             'user_data': user_data,
@@ -101,6 +101,7 @@ class UserBlockchain:
             'doc_ver': doc_ver,
             'signer_id': signer_id,
             'signer_data': signer_data,
+            'id': UserBlockchain.hash(user_data),
             'previous_hash': UserBlockchain.hash(previous_hash),  # предыдущий хэш
         }
 
@@ -115,6 +116,55 @@ class UserBlockchain:
     def hash(block):
         block_string = json.dumps(block, sort_keys=True).encode()
         return hashlib.sha256(block_string).hexdigest()
+
+
+"""
+функция создания файла инитит цепочку файла, и добавляет свой id подписанту на подпись
+при этом владелец дока подписывает его 
+"""
+
+
+def create_document(doc_name, doc_version, owner, signer, document):
+    owner_id = owner.last_block['id']
+    owner_signature = owner.last_block['signature']
+    owner_signature_ts = owner.last_block['timestamp']
+
+    chain_file = FileBlockchain(doc_name=doc_name, doc_version=doc_version, owner_id=owner_id,
+                                owner_signature=owner_signature, owner_signature_ts=owner_signature_ts,
+                                signer=signer, document=document)
+
+    signer.to_sign.append(chain_file.last_block['id'])
+
+    return chain_file
+
+
+"""
+функция подписи файла подписантом берет подписанный с одной стороны файл, проверяет подпись 
+и если все ок дописывает новый блок в цепочку файла, а также закрывает новый блок у владельца этого файла
+"""
+
+
+def sign_document_by_signer(file, owner, signer, signature):
+    owner_id = owner.last_block['id']
+    owner_signature = owner.last_block['signature']
+    owner_signature_ts = owner.last_block['timestamp']
+
+    signer_id = signer.last_block['id']
+    signer_signature = signer.last_block['signature']
+    signer_signature_ts = signer.last_block['timestamp']
+
+    if signature:  # тут подтверждение подписи
+        tmp_id = file.last_block['id']
+        file.new_block(doc_name=doc_name, doc_version=doc_version, owner_id=owner_id,
+                       owner_signature=owner_signature, owner_signature_ts=owner_signature_ts,
+                       document=document, signer_id=signer_id, signer_signature=signer_signature,
+                       signer_signature_ts=signer_signature_ts, previous_hash=FileBlockchain.hash(file.last_block))
+
+        signer.to_sign.remove(tmp_id)
+        owner.new_block(user_data=owner.last_block['user_data'], signer_id=signer_id,
+                        signer_data=signer.last_block['user_data'], doc_id=file.last_block['id'],
+                        doc_ver=file.last_block['version'], signer_signature=signature)
+        return file
 
 
 u_data1 = {

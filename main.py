@@ -1,60 +1,90 @@
-from Chains import chain_user_1, chain_user_2, FileBlockchain, signature2
-
-# хардкод
-doc_name = 'договор сантехника'
-doc_version = '1'
-document = 'договор.txt'
-
-"""
-функция создания файла инитит цепочку файла, и добавляет свой id подписанту на подпись
-при этом владелец дока подписывает его 
-"""
-def create_document(doc_name, doc_version, owner, signer, document):
-    owner_id = owner.last_block['id']
-    owner_signature = owner.last_block['signature']
-    owner_signature_ts = owner.last_block['timestamp']
-
-    chain_file = FileBlockchain(doc_name=doc_name, doc_version=doc_version, owner_id=owner_id,
-                                owner_signature=owner_signature, owner_signature_ts=owner_signature_ts,
-                                signer=signer, document=document)
-
-    signer.to_sign.append(chain_file.last_block['id'])
-
-    return chain_file
-
-"""
-функция подписи файла подписантом берет подписанный с одной стороны файл, проверяет подпись 
-и если все ок дописывает новый блок в цепочку файла, а также закрывает новый блок у владельца этого файла
-"""
-def sign_document_by_signer(file, owner, signer, signature):
-    owner_id = owner.last_block['id']
-    owner_signature = owner.last_block['signature']
-    owner_signature_ts = owner.last_block['timestamp']
-
-    signer_id = signer.last_block['id']
-    signer_signature = signer.last_block['signature']
-    signer_signature_ts = signer.last_block['timestamp']
-
-    if signature:  # тут подтверждение подписи
-        tmp_id = file.last_block['id']
-        file.new_block(doc_name=doc_name, doc_version=doc_version, owner_id=owner_id,
-                       owner_signature=owner_signature, owner_signature_ts=owner_signature_ts,
-                       document=document, signer_id=signer_id, signer_signature=signer_signature,
-                       signer_signature_ts=signer_signature_ts, previous_hash=FileBlockchain.hash(file.last_block))
-
-        signer.to_sign.remove(tmp_id)
-        owner.new_block(user_data=owner.last_block['user_data'], signer_id=signer_id,
-                        signer_data=signer.last_block['user_data'], doc_id=file.last_block['id'],
-                        doc_ver=file.last_block['version'], signer_signature=signature)
-        return file
+from Chains import UserBlockchain, FileBlockchain, create_document, sign_document_by_signer
+from helpers import inin_pkl, readFile, rewriteFile
+from uuid import uuid4
+import os
+from flask import Flask, jsonify, request, make_response
 
 
-file1 = create_document(doc_name, doc_version, chain_user_1, chain_user_2, document)
-file1 = sign_document_by_signer(file1, chain_user_1, chain_user_2, signature2)
+def magic(signature_1, signature_2):  # тут, как я понял должна быть распознавашка
+    return '***'
 
-print('владелец файла')
-print(chain_user_1.__dict__)
-print('подписант файла')
-print(chain_user_2.__dict__)
-print('файла')
-print(file1.__dict__)
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = '/uploads'
+node_identifier = str(uuid4()).replace('-', '')
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    """
+        user_data - любой json {'name': '', 'surname': '', ...}
+        signature - строчка подписи
+
+    :return:
+    """
+    values = request.values
+    blockchain = UserBlockchain(user_data=eval(values['user_data']), signature=values['signature'])
+    user_id = blockchain.last_block['id']
+    db = readFile('data/db.pkl')
+    db['users'].update({user_id: blockchain})
+    rewriteFile('data/db.pkl', db)
+    response = {'status': f'OK\nUser registered {user_id}'}
+    return jsonify(response), 200
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    """
+        user_id - любой json {'name': '', 'surname': '', ...}
+        signature - строчка подписи
+
+        :return:
+    """
+    values = request.values
+    user_id = values['user_id']
+    signarure = values['signature']
+    db = readFile('data/db.pkl')
+    if user_id in db['users']:
+        if signarure == db['users'][user_id].last_block['signature']:
+            response = make_response()
+            response.set_cookie('id', user_id)
+            response.url = '127.0.0.1:5000/lk'
+    return response, 302
+
+
+@app.route('/account', methods=['GET'])
+def account():
+    """
+        ничего не принимает, нужна только кука чтобы дать список доков на подпись и данные юзера
+
+        :return:
+    """
+    cookies = request.cookies
+    id_cookie = cookies['user_id']
+    db = readFile('data/db.pkl')
+    if id_cookie in db['users']:
+        response = {
+            'user_data': db['users'][id_cookie].last_block['user_data'],
+            'files_ids_to_sign': db['users'][id_cookie].to_sign
+        }
+        return jsonify(response), 200
+
+
+if __name__ == '__main__':
+    # инитим огурчики, решил так ибо нет времени разбираться с редисом/монгой или подобными(
+    inin_pkl()
+    db = readFile('data/db.pkl')
+    doc_name = 'договор сантехника'
+    doc_version = '1'
+    document = 'договор.txt'
+    app.run(host='127.0.0.1', port=5000)
+
+# file1 = create_document(doc_name, doc_version, chain_user_1, chain_user_2, document)
+# file1 = sign_document_by_signer(file1, chain_user_1, chain_user_2, signature2)
+#
+# print('владелец файла')
+# print(chain_user_1.__dict__)
+# print('подписант файла')
+# print(chain_user_2.__dict__)
+# print('файла')
+# print(file1.__dict__)
