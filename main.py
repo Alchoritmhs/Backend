@@ -254,13 +254,12 @@ def sing_smbds_doc():
         for j in i:
             local.update({j: i[j]})
             if j == 'login':
-                login = i[j]
-        db_users.update({login: local})
+                logini = i[j]
+        db_users.update({logini: local})
     files_to_sign = db_users[signer_login]['to_sign']
     if file_id in files_to_sign:
         owner_login = db_files[file_id]['chain'][-1]['owner_login']
         chain = db_users[owner_login]['chain']
-        db_users[signer_login]['to_sign'].remove(file_id)
         my_docs = db_users[owner_login]['my_docs']
         to_sign = db_users[owner_login]['to_sign']
         doc_ver = db_files[file_id]['chain'][-1]['version']
