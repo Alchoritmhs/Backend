@@ -224,8 +224,8 @@ def send_to_sign():
         for j in i:
             local.update({j: i[j]})
             if j == 'login':
-                login = i[j]
-        db_users.update({login: local})
+                logini = i[j]
+        db_users.update({logini: local})
     owner_file_ids = db_users[login]['my_docs']
     if id_to_sign in owner_file_ids:
         curr_to_sign = db_users[signer_login]['to_sign']
