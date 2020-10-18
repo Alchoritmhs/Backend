@@ -7,7 +7,6 @@ from pymongo import MongoClient
 from flask_cors import CORS
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = '/uploads'
 CORS(app)
 node_identifier = str(uuid4()).replace('-', '')
 
@@ -37,18 +36,15 @@ def register():
     blockchain = UserBlockchain(user_data=user_data, signature=signature, login=login, password=password)
     users.insert_one(
         {'chain': blockchain.chain, 'login': login, 'to_sign': blockchain.to_sign, 'my_docs': blockchain.my_docs})
-    response = {'status': 'OK', 'message': 'User registered', }
-    return jsonify(response), 200
+    res = make_response()
+    res.headers['Access-Control-Allow-Origin'] = 'true'
+    res.headers['Access-Control-Allow-Credentials'] = 'true'
+    res.text = {'status': 'OK - registered'}
+    return res
 
 
 @app.route('/login', methods=['POST'])
 def login():
-    """
-        user_id - любой json {'name': '', 'surname': '', ...}
-        signature - строчка подписи
-
-        :return:
-    """
     values = request.values
     login = values['login']
     password = get_hash(values['password'])
@@ -66,6 +62,8 @@ def login():
             response = make_response()
             response.set_cookie('login', login)
             response.url = '127.0.0.1:5000/account'
+            res.headers['Access-Control-Allow-Origin'] = 'true'
+            res.headers['Access-Control-Allow-Credentials'] = 'true'
         return response, 302
 
 
@@ -108,7 +106,12 @@ def account():
             'files_ids_to_sign': data_to_sign,
             'my_files': data_my_docs
         }
-        return jsonify(response), 200
+        res = make_response()
+        res.headers['Access-Control-Allow-Origin'] = 'true'
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
+        res.text = response
+        return res
+
 
 
 @app.route('/upload', methods=['POST'])
@@ -141,8 +144,12 @@ def upload():
     curr_to_sign = db_users[login]['to_sign']
     curr_to_sign.append(blockchain.last_block['id'])
     users.update_one({'login': login}, {'$set': {'to_sign': curr_to_sign}})
-    response = {'status': 'OK', 'message': 'File uploaded'}
-    return jsonify(response), 200
+
+    res = make_response()
+    res.headers['Access-Control-Allow-Origin'] = 'true'
+    res.headers['Access-Control-Allow-Credentials'] = 'true'
+    res.text = {'status': 'OK', 'message': 'File uploaded'}
+    return res
 
 
 @app.route('/file_info', methods=['POST'])
@@ -167,7 +174,11 @@ def file_info():
         if 'previous_hash' in file:
             del file['previous_hash']
         response = {'status': 'OK', 'message': file}
-        return jsonify(response), 200
+        res = make_response()
+        res.headers['Access-Control-Allow-Origin'] = 'true'
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
+        res.text = {'status': 'OK', 'message': file}
+        return res
 
 
 @app.route('/sign_doc_own', methods=['POST'])
@@ -228,8 +239,11 @@ def sign_file_own():
     prev_chain.append(new_block_file)
     files.update_one({'id': id_to_sign}, {'$set': {'chain': prev_chain}})
 
-    response = {'status': 'OK', 'message': 'File signed'}
-    return jsonify(response), 200
+    res = make_response()
+    res.headers['Access-Control-Allow-Origin'] = 'true'
+    res.headers['Access-Control-Allow-Credentials'] = 'true'
+    res.text = {'status': 'OK', 'message': 'File signed'}
+    return res
 
 
 @app.route('/send_doc_to_sign', methods=['POST'])
@@ -251,8 +265,11 @@ def send_to_sign():
         curr_to_sign = db_users[signer_login]['to_sign']
         curr_to_sign.append(id_to_sign)
         users.update_one({'login': signer_login}, {'$set': {'to_sign': curr_to_sign}})
-        response = {'status': 'OK', 'message': f'File sent to user {signer_login}'}
-        return jsonify(response), 200
+        res = make_response()
+        res.headers['Access-Control-Allow-Origin'] = 'true'
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
+        res.text = {'status': 'OK', 'message': f'File sent to user {signer_login}'}
+        return res
 
 
 @app.route('/sing_smbds_doc', methods=['POST'])
@@ -324,14 +341,20 @@ def sing_smbds_doc():
         prev_chain = db_files[file_id]['chain']
         prev_chain.append(new_block_file)
         files.update_one({'id': file_id}, {'$set': {'chain': prev_chain}})
-        response = {'status': 'OK', 'message': 'File signed'}
-        return jsonify(response), 200
+        res = make_response()
+        res.headers['Access-Control-Allow-Origin'] = 'true'
+        res.headers['Access-Control-Allow-Credentials'] = 'true'
+        res.text = {'status': 'OK', 'message': 'File signed'}
+        return res
 
 
 @app.route('/', methods=['GET'])
 def test():
-    response = {'status': 'OK', 'message': 'Work'}
-    return jsonify(response), 200
+    res = make_response()
+    res.headers['Access-Control-Allow-Origin'] = 'true'
+    res.headers['Access-Control-Allow-Credentials'] = 'true'
+    res.text = {'status': 'OK', 'message': 'Work'}
+    return res
 
 
 if __name__ == '__main__':
