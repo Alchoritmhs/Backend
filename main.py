@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
 node_identifier = str(uuid4()).replace('-', '')
 
-client = MongoClient('localhost', 27017)
+client = MongoClient('mongodb', 27017)
 mydatabase = client.blockchains
 users = mydatabase.users
 files = mydatabase.files
@@ -82,13 +82,29 @@ def account():
         for j in i:
             local.update({j: i[j]})
             if j == 'login':
-                login = i[j]
-        db.update({login: local})
+                logini = i[j]
+        db.update({logini: local})
+    db_files = {}
+    for i in files.find({}, {'_id': False}):
+        local = {}
+        for j in i:
+            local.update({j: i[j]})
+            if j == 'id':
+                f_id = i[j]
+        db_files.update({f_id: local})
     if login in db:
+        ids = db[login]['to_sign']
+        data_to_sign = {}
+        for i in ids:
+            data_to_sign.update({i:db_files[i]['chain'][-1]['name']})
+        ids = db[login]['my_docs']
+        data_my_docs = {}
+        for i in ids:
+            data_my_docs.update({i: db_files[i]['chain'][-1]['name']})
         response = {
             'user_data': db[login]['chain'][-1]['user_data'],
-            'files_ids_to_sign': db[login]['to_sign'],
-            'my_files': db[login]['my_docs']
+            'files_ids_to_sign': data_to_sign,
+            'my_files': data_my_docs
         }
         return jsonify(response), 200
 
@@ -319,4 +335,4 @@ def test():
 if __name__ == '__main__':
     # users.delete_many({})
     # files.delete_many({})
-    app.run(host='127.0.0.1', port=5000)
+    app.run(host='0.0.0.0', port=5000)
