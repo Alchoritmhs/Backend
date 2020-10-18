@@ -4,9 +4,11 @@ import time
 import hashlib
 from flask import Flask, jsonify, request, make_response
 from pymongo import MongoClient
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = '/uploads'
+CORS(app)
 node_identifier = str(uuid4()).replace('-', '')
 
 client = MongoClient('mongodb', 27017)
