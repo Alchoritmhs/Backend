@@ -36,10 +36,9 @@ def register():
     blockchain = UserBlockchain(user_data=user_data, signature=signature, login=login, password=password)
     users.insert_one(
         {'chain': blockchain.chain, 'login': login, 'to_sign': blockchain.to_sign, 'my_docs': blockchain.my_docs})
-    res = make_response()
+    res = make_response({'status': 'OK - registered'})
     res.headers['Access-Control-Allow-Origin'] = 'true'
     res.headers['Access-Control-Allow-Credentials'] = 'true'
-    res.text = {'status': 'OK - registered'}
     return res
 
 
@@ -62,8 +61,8 @@ def login():
             response = make_response()
             response.set_cookie('login', login)
             response.url = '127.0.0.1:5000/account'
-            res.headers['Access-Control-Allow-Origin'] = 'true'
-            res.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Origin'] = 'true'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
         return response, 302
 
 
@@ -106,10 +105,9 @@ def account():
             'files_ids_to_sign': data_to_sign,
             'my_files': data_my_docs
         }
-        res = make_response()
+        res = make_response(response)
         res.headers['Access-Control-Allow-Origin'] = 'true'
         res.headers['Access-Control-Allow-Credentials'] = 'true'
-        res.text = response
         return res
 
 
@@ -145,10 +143,9 @@ def upload():
     curr_to_sign.append(blockchain.last_block['id'])
     users.update_one({'login': login}, {'$set': {'to_sign': curr_to_sign}})
 
-    res = make_response()
+    res = make_response({'status': 'OK', 'message': 'File uploaded'})
     res.headers['Access-Control-Allow-Origin'] = 'true'
     res.headers['Access-Control-Allow-Credentials'] = 'true'
-    res.text = {'status': 'OK', 'message': 'File uploaded'}
     return res
 
 
@@ -174,10 +171,9 @@ def file_info():
         if 'previous_hash' in file:
             del file['previous_hash']
         response = {'status': 'OK', 'message': file}
-        res = make_response()
+        res = make_response({'status': 'OK', 'message': file})
         res.headers['Access-Control-Allow-Origin'] = 'true'
         res.headers['Access-Control-Allow-Credentials'] = 'true'
-        res.text = {'status': 'OK', 'message': file}
         return res
 
 
@@ -265,10 +261,9 @@ def send_to_sign():
         curr_to_sign = db_users[signer_login]['to_sign']
         curr_to_sign.append(id_to_sign)
         users.update_one({'login': signer_login}, {'$set': {'to_sign': curr_to_sign}})
-        res = make_response()
+        res = make_response({'status': 'OK', 'message': f'File sent to user {signer_login}'})
         res.headers['Access-Control-Allow-Origin'] = 'true'
         res.headers['Access-Control-Allow-Credentials'] = 'true'
-        res.text = {'status': 'OK', 'message': f'File sent to user {signer_login}'}
         return res
 
 
@@ -341,19 +336,17 @@ def sing_smbds_doc():
         prev_chain = db_files[file_id]['chain']
         prev_chain.append(new_block_file)
         files.update_one({'id': file_id}, {'$set': {'chain': prev_chain}})
-        res = make_response()
+        res = make_response({'status': 'OK', 'message': 'File signed'})
         res.headers['Access-Control-Allow-Origin'] = 'true'
         res.headers['Access-Control-Allow-Credentials'] = 'true'
-        res.text = {'status': 'OK', 'message': 'File signed'}
         return res
 
 
 @app.route('/', methods=['GET'])
 def test():
-    res = make_response()
+    res = make_response({'status': 'OK', 'message': 'Work'})
     res.headers['Access-Control-Allow-Origin'] = 'true'
     res.headers['Access-Control-Allow-Credentials'] = 'true'
-    res.text = {'status': 'OK', 'message': 'Work'}
     return res
 
 
